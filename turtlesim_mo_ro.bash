@@ -33,7 +33,7 @@ if [ $? -eq 0 ]; then
     gnome-terminal -- bash -c "
     source /opt/ros/humble/setup.bash
     source $WORKSPACE_DIR/install/setup.bash
-    ros2 run $PACKAGE_NAME turtlesim_automata
+    ros2 run $PACKAGE_NAME turtlesim_mo_ro
     "
 
     #rm 
