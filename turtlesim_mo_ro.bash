@@ -3,7 +3,7 @@
 # Step 1: Set Variables
 WORKSPACE_DIR=~/ros2_ws
 SRC_DIR=$WORKSPACE_DIR/src
-PACKAGE_NAME=turtlesim_automata
+PACKAGE_NAME=turtlesim_mo_ro
 DOWNLOADS_DIR=~/Downloads
 ZIP_FILE=$DOWNLOADS_DIR/turtlesim_mats.zip
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
