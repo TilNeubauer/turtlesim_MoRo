@@ -32,11 +32,6 @@ public:
         //rand start velocity
         set_rand_v();
 
-         // rand orientation
-        if (!is_init_orient_set){ //once at start 
-            set_rand_orientation();
-            is_init_orient_set = true;
-        }
     }
 
     //ros 2 
@@ -99,6 +94,13 @@ public:
 
     // get pose
     void get_pose(const turtlesim::msg::Pose::SharedPtr msg){
+        
+        // rand orientation
+        if (!is_init_orient_set){ //once at start 
+            set_rand_orientation();
+            is_init_orient_set = true;
+        }
+        
         pos = *msg;
 
         // is edge??? -> react
