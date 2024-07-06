@@ -15,7 +15,7 @@ using namespace std::chrono_literals;
 //class: move Turtle, inherit from rclcpp::Node
 class Turtlesim_auto_move : public rclcpp::Node{
 public:
-    Turtlesim_auto_move() : Node("turtlesim_auto_move_node"), at_edge_(false), rotating_(false), moving_backward_(false), target_angle_(0.0), initial_orientation_set_(false){
+    Turtlesim_auto_move() : Node("turtlesim_auto_move_node"), is_edge(false), is_rotating(false), is_moving_back(false), target_angle_(0.0), is_init_orient_set(false){
         // init publisher for velocity to turtle
         publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("turtle1/cmd_vel", 10);
         
@@ -24,7 +24,7 @@ public:
             "turtle1/pose", 10, std::bind(&Turtlesim_auto_move::get_pose, this, std::placeholders::_1));
         
         // int timer (fuer turltle mewegung)
-        timer_ = this->create_wall_timer(500ms, std::bind(&Turtlesim_auto_move::move_turtle, this));
+        timer = this->create_wall_timer(500ms, std::bind(&Turtlesim_auto_move::move_turtle, this));
 
         //rand number generator
         std::srand(std::time(0));
@@ -34,34 +34,59 @@ public:
     }
 
 private:
+    //ros 2 
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_; // publisher
+    rclcpp::Subscription<turtlesim::msg::Pose>::SharedPtr subscription_; // subscription
+    
+
+    rclcpp::TimerBase::SharedPtr timer; // timing
+    rclcpp::TimerBase::SharedPtr rot_timer; // timing movement rotation 
+    rclcpp::TimerBase::SharedPtr back_timer; // timing movment backwords 
+
+
+    // var state and movement param
+    geometry_msgs::msg::Twist v; // move velovitiy 
+    turtlesim::msg::Pose pos; // position of turtle
+    
+    //state var
+    bool is_init_orient_set;
+    bool is_edge; 
+    bool is_rotating;
+    bool is_moving_back;
+
+    double initial_angle;
+    double target_angle_;
+    
+
+
     // get pose
     void get_pose(const turtlesim::msg::Pose::SharedPtr msg){
-        current_pose_ = *msg;
+        pos = *msg;
 
         // rand orientation
-        if (!initial_orientation_set_){ //once at start 
+        if (!is_init_orient_set){ //once at start 
             set_rand_orientation();
-            initial_orientation_set_ = true;
+            is_init_orient_set = true;
         }
 
         // is edge??? -> react
-        if ((msg->x <= 1.0 || msg->x >= 10.0 || msg->y <= 1.0 || msg->y >= 10.0) && !rotating_ && !moving_backward_){
-            if (!at_edge_){
+        if ((msg->x <= 1.0 || msg->x >= 10.0 || msg->y <= 1.0 || msg->y >= 10.0) && !is_rotating && !is_moving_back){
+            if (!is_edge){
                 RCLCPP_INFO(this->get_logger(), "Edge detected!");
-                at_edge_ = true;
+                is_edge = true;
                 stopTurtle(); //trutle stop
                 move_back(); //turtle move back
             }
         }
         else if (!(msg->x <= 0.0 || msg->x >= 11.0 || msg->y <= 0.0 || msg->y >= 11.0)){ //not edge
-            at_edge_ = false;
+            is_edge = false;
         }
     }
 
     // move forward
     void move_turtle(){
-        if (!rotating_ && !moving_backward_){ // check if doing something 
-            publisher_->publish(velocity_);
+        if (!is_rotating && !is_moving_back){ // check if doing something 
+            publisher_->publish(v);
         }
     }
 
@@ -75,51 +100,51 @@ private:
 
     // set rand velocity linear
     void set_rand_v(){
-        velocity_.linear.x = (std::rand() % 2) + 1.0;
-        velocity_.angular.z = 0.0;
+        v.linear.x = (std::rand() % 2) + 1.0;
+        v.angular.z = 0.0;
     }
 
     // turtle stop
     void stopTurtle(){
-        velocity_.linear.x = 0.0;
-        velocity_.angular.z = 0.0;
-        publisher_->publish(velocity_);
+        v.linear.x = 0.0;
+        v.angular.z = 0.0;
+        publisher_->publish(v);
     }
 
 
     //turtle move back
     void move_back(){
-        moving_backward_ = true;
-        velocity_.linear.x = -1.0;
-        publisher_->publish(velocity_);
-        backward_timer_ = this->create_wall_timer(1s, std::bind(&Turtlesim_auto_move::stop_move_back, this)); // stop after 1s 
+        is_moving_back = true;
+        v.linear.x = -1.0;
+        publisher_->publish(v);
+        back_timer = this->create_wall_timer(1s, std::bind(&Turtlesim_auto_move::stop_move_back, this)); // stop after 1s 
     }
 
     // stop moving backward + start rotating
     void stop_move_back(){
-        velocity_.linear.x = 0.0; // stop
-        publisher_->publish(velocity_); // publish
-        moving_backward_ = false;
+        v.linear.x = 0.0; // stop
+        publisher_->publish(v); // publish
+        is_moving_back = false;
 
 
         rotate_tutle_fkt();  // start rotation
-        backward_timer_->cancel();
+        back_timer->cancel();
     }
 
     //rotate 90 degrees clockwise
     void rotate_tutle_fkt(){
-        rotating_ = true;
-        initial_theta_ = current_pose_.theta; //get direction 
-        target_angle_ = fmod(initial_theta_ - M_PI_2, 2 * M_PI); // Rotate 90 degrees clockwise
+        is_rotating = true;
+        initial_angle = pos.theta; //get direction 
+        target_angle_ = fmod(initial_angle - M_PI_2, 2 * M_PI); // Rotate 90 degrees clockwise
 
-        velocity_.angular.z = -0.5;  // Reduced rotation speed --> more precision
+        v.angular.z = -0.5;  // Reduced rotation speed --> more precision
 
-        rotate_timer_ = this->create_wall_timer(10ms, std::bind(&Turtlesim_auto_move::rotate, this)); //start rotte
+        rot_timer = this->create_wall_timer(10ms, std::bind(&Turtlesim_auto_move::rotate, this)); //start rotte
     }
 
     //rotation turtle
     void rotate(){
-        double angle_difference = target_angle_ - current_pose_.theta;
+        double angle_difference = target_angle_ - pos.theta;
 
         //check angle in correct range 
         if (angle_difference < -M_PI){
@@ -132,36 +157,18 @@ private:
 
         // Stop rotating when target angle 
         if (fabs(angle_difference) < 0.01){
-            velocity_.angular.z = 0.0;
-            publisher_->publish(velocity_);
-            rotating_ = false;
-            rotate_timer_->cancel();
+            v.angular.z = 0.0;
+            publisher_->publish(v);
+            is_rotating = false;
+            rot_timer->cancel();
             set_rand_v();
-            publisher_->publish(velocity_);
+            publisher_->publish(v);
         }
         else{
-            publisher_->publish(velocity_);
+            publisher_->publish(v);
         }
     }
 
-
-
-    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_; // publisher_
-    rclcpp::Subscription<turtlesim::msg::Pose>::SharedPtr subscription_; // subscription_
-    rclcpp::TimerBase::SharedPtr timer_; // timing
-    rclcpp::TimerBase::SharedPtr rotate_timer_; // timing
-    rclcpp::TimerBase::SharedPtr backward_timer_; // timing
-
-
-    // var state and movement param
-    geometry_msgs::msg::Twist velocity_; // move velovitiy 
-    turtlesim::msg::Pose current_pose_; // pos
-    bool at_edge_;  
-    bool rotating_;
-    bool moving_backward_;
-    bool initial_orientation_set_;
-    double target_angle_;
-    double initial_theta_;
 };
 
 int main(int argc, char **argv){
