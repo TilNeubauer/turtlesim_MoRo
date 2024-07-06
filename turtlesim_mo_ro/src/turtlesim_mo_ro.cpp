@@ -31,9 +31,14 @@ public:
 
         //rand start velocity
         set_rand_v();
+
+         // rand orientation
+        if (!is_init_orient_set){ //once at start 
+            set_rand_orientation();
+            is_init_orient_set = true;
+        }
     }
 
-private:
     //ros 2 
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_; // publisher
     rclcpp::Subscription<turtlesim::msg::Pose>::SharedPtr subscription_; // subscription
@@ -57,17 +62,44 @@ private:
     double initial_angle;
     double target_angle_;
     
+    // move forward
+    void move_turtle(){
+        if (!is_rotating && !is_moving_back){ // check if doing something 
+            publisher_->publish(v);
+        }
+    }
+
+    //turtle move back
+    void move_back(){
+        is_moving_back = true;
+        v.linear.x = -1.0;
+        publisher_->publish(v);
+        back_timer = this->create_wall_timer(1s, std::bind(&Turtlesim_auto_move::stop_move_back, this)); // stop after 1s 
+    }
+
+    // turtle stop
+    void stopTurtle(){
+        v.linear.x = 0.0;
+        v.angular.z = 0.0;
+        publisher_->publish(v);
+    }
+
+
+        // stop moving backward + start rotating
+    void stop_move_back(){
+        v.linear.x = 0.0; // stop
+        publisher_->publish(v); // publish
+
+        is_moving_back = false;
+
+        rotate_tutle_fkt();  // start rotation
+        back_timer->cancel();
+    }
 
 
     // get pose
     void get_pose(const turtlesim::msg::Pose::SharedPtr msg){
         pos = *msg;
-
-        // rand orientation
-        if (!is_init_orient_set){ //once at start 
-            set_rand_orientation();
-            is_init_orient_set = true;
-        }
 
         // is edge??? -> react
         if ((msg->x <= 1.0 || msg->x >= 10.0 || msg->y <= 1.0 || msg->y >= 10.0) && !is_rotating && !is_moving_back){
@@ -83,12 +115,6 @@ private:
         }
     }
 
-    // move forward
-    void move_turtle(){
-        if (!is_rotating && !is_moving_back){ // check if doing something 
-            publisher_->publish(v);
-        }
-    }
 
     // set rand orientation
     void set_rand_orientation(){
@@ -104,32 +130,8 @@ private:
         v.angular.z = 0.0;
     }
 
-    // turtle stop
-    void stopTurtle(){
-        v.linear.x = 0.0;
-        v.angular.z = 0.0;
-        publisher_->publish(v);
-    }
 
 
-    //turtle move back
-    void move_back(){
-        is_moving_back = true;
-        v.linear.x = -1.0;
-        publisher_->publish(v);
-        back_timer = this->create_wall_timer(1s, std::bind(&Turtlesim_auto_move::stop_move_back, this)); // stop after 1s 
-    }
-
-    // stop moving backward + start rotating
-    void stop_move_back(){
-        v.linear.x = 0.0; // stop
-        publisher_->publish(v); // publish
-        is_moving_back = false;
-
-
-        rotate_tutle_fkt();  // start rotation
-        back_timer->cancel();
-    }
 
     //rotate 90 degrees clockwise
     void rotate_tutle_fkt(){
@@ -170,6 +172,8 @@ private:
     }
 
 };
+
+
 
 int main(int argc, char **argv){
     // Initialize the ROS 2 system
