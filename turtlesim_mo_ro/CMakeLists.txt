@@ -5,11 +5,11 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(turtlesim REQUIRED)
-find_package(geometry_msgs REQUIRED)  # Fügen Sie diese Zeile hinzu
+find_package(geometry_msgs REQUIRED)
 
 add_executable(turtlesim_mo_ro src/turtlesim_mo_ro.cpp)
 
-ament_target_dependencies(turtlesim_mo_ro rclcpp std_msgs turtlesim geometry_msgs)  # Fügen Sie geometry_msgs hinzu
+ament_target_dependencies(turtlesim_mo_ro rclcpp std_msgs turtlesim geometry_msgs)
 
 install(TARGETS
   turtlesim_mo_ro
