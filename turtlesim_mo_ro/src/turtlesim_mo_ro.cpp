@@ -21,26 +21,26 @@ public:
         
         // init subscription to get pose from turtle
         subscription_ = this->create_subscription<turtlesim::msg::Pose>(
-            "turtle1/pose", 10, std::bind(&Turtlesim_auto_move::poseCallback, this, std::placeholders::_1));
+            "turtle1/pose", 10, std::bind(&Turtlesim_auto_move::get_pose, this, std::placeholders::_1));
         
         // int timer (fuer turltle mewegung)
-        timer_ = this->create_wall_timer(500ms, std::bind(&Turtlesim_auto_move::moveTurtle, this));
+        timer_ = this->create_wall_timer(500ms, std::bind(&Turtlesim_auto_move::move_turtle, this));
 
         //rand number generator
         std::srand(std::time(0));
 
         //rand start velocity
-        setRandomVelocity();
+        set_rand_v();
     }
 
 private:
     // get pose
-    void poseCallback(const turtlesim::msg::Pose::SharedPtr msg){
+    void get_pose(const turtlesim::msg::Pose::SharedPtr msg){
         current_pose_ = *msg;
 
         // rand orientation
         if (!initial_orientation_set_){ //once at start 
-            setRandomOrientation();
+            set_rand_orientation();
             initial_orientation_set_ = true;
         }
 
@@ -50,7 +50,7 @@ private:
                 RCLCPP_INFO(this->get_logger(), "Edge detected!");
                 at_edge_ = true;
                 stopTurtle(); //trutle stop
-                moveBackward(); //turtle move back
+                move_back(); //turtle move back
             }
         }
         else if (!(msg->x <= 0.0 || msg->x >= 11.0 || msg->y <= 0.0 || msg->y >= 11.0)){ //not edge
@@ -59,14 +59,14 @@ private:
     }
 
     // move forward
-    void moveTurtle(){
+    void move_turtle(){
         if (!rotating_ && !moving_backward_){ // check if doing something 
             publisher_->publish(velocity_);
         }
     }
 
     // set rand orientation
-    void setRandomOrientation(){
+    void set_rand_orientation(){
         double random_orientation = static_cast<double>(std::rand()) / RAND_MAX * 2 * M_PI; //rand 0-2pi
         geometry_msgs::msg::Twist twist;
         twist.angular.z = random_orientation;
@@ -74,7 +74,7 @@ private:
     }
 
     // set rand velocity linear
-    void setRandomVelocity(){
+    void set_rand_v(){
         velocity_.linear.x = (std::rand() % 2) + 1.0;
         velocity_.angular.z = 0.0;
     }
@@ -88,26 +88,26 @@ private:
 
 
     //turtle move back
-    void moveBackward(){
+    void move_back(){
         moving_backward_ = true;
         velocity_.linear.x = -1.0;
         publisher_->publish(velocity_);
-        backward_timer_ = this->create_wall_timer(1s, std::bind(&Turtlesim_auto_move::stopMovingBackward, this)); // stop after 1s 
+        backward_timer_ = this->create_wall_timer(1s, std::bind(&Turtlesim_auto_move::stop_move_back, this)); // stop after 1s 
     }
 
     // stop moving backward + start rotating
-    void stopMovingBackward(){
+    void stop_move_back(){
         velocity_.linear.x = 0.0; // stop
         publisher_->publish(velocity_); // publish
         moving_backward_ = false;
 
 
-        rotateTurtle();  // start rotation
+        rotate_tutle_fkt();  // start rotation
         backward_timer_->cancel();
     }
 
     //rotate 90 degrees clockwise
-    void rotateTurtle(){
+    void rotate_tutle_fkt(){
         rotating_ = true;
         initial_theta_ = current_pose_.theta; //get direction 
         target_angle_ = fmod(initial_theta_ - M_PI_2, 2 * M_PI); // Rotate 90 degrees clockwise
@@ -136,7 +136,7 @@ private:
             publisher_->publish(velocity_);
             rotating_ = false;
             rotate_timer_->cancel();
-            setRandomVelocity();
+            set_rand_v();
             publisher_->publish(velocity_);
         }
         else{
